@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 const SUPA_URL = 'https://pyyfurstwwhvpxrysilh.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5eWZ1cnN0d3dodnB4cnlzaWxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTE4NDEsImV4cCI6MjA5MzQ4Nzg0MX0.xOT5DnBXmLNGS7T1XgjwCh1m0yfDj8IwN3BucbcsKaI'
 
+const BRAND   = '#166534'
 const ACCENTS = ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2']
 const COLS = [
   { key:'todo',  en:'To do',        es:'Por hacer',  color:'#555'    },
@@ -77,6 +78,21 @@ const inp = {
   marginBottom:'10px', boxSizing:'border-box', fontFamily:'inherit',
 }
 
+// ── Logo SVG ──────────────────────────────────────────────────
+function Logo({ size = 32, white = false }) {
+  const bg = white ? '#fff' : BRAND
+  const fg = white ? BRAND : '#fff'
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="11" fill={bg}/>
+      <rect x="13" y="10" width="5" height="28" rx="2.5" fill={fg}/>
+      <path d="M18 24 L35 10" stroke={fg} strokeWidth="5" strokeLinecap="round"/>
+      <path d="M18 24 L35 38" stroke={fg} strokeWidth="5" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+// ── Auth Screen ───────────────────────────────────────────────
 function AuthScreen({ t, onLogin, lang, setLang }) {
   const [mode, setMode]       = useState('login')
   const [email, setEmail]     = useState('')
@@ -113,9 +129,12 @@ function AuthScreen({ t, onLogin, lang, setLang }) {
         </button>
       </div>
 
-      <div style={{ marginBottom:'32px', textAlign:'center' }}>
-        <div style={{ fontSize:'32px', fontWeight:'800', letterSpacing:'-1.5px', color:'#111' }}>Kanvuu</div>
-        <div style={{ fontSize:'13px', color:'#aaa', marginTop:'4px' }}>{t.tagline}</div>
+      <div style={{ marginBottom:'36px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:'14px' }}>
+        <Logo size={56} />
+        <div>
+          <div style={{ fontSize:'28px', fontWeight:'800', letterSpacing:'-1px', color:BRAND }}>Kanvuu</div>
+          <div style={{ fontSize:'13px', color:'#aaa', marginTop:'4px' }}>{t.tagline}</div>
+        </div>
       </div>
 
       <div style={{ width:'100%', maxWidth:'340px', padding:'0 24px' }}>
@@ -138,7 +157,7 @@ function AuthScreen({ t, onLogin, lang, setLang }) {
         )}
 
         <button onClick={submit} disabled={loading}
-          style={{ width:'100%', background:'#111', color:'#fff', border:'none', borderRadius:'8px', padding:'11px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity:loading?0.6:1 }}>
+          style={{ width:'100%', background:BRAND, color:'#fff', border:'none', borderRadius:'8px', padding:'11px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity:loading?0.7:1 }}>
           {loading ? t.loading : (mode==='login' ? t.loginBtn : t.registerBtn)}
         </button>
 
@@ -161,12 +180,24 @@ function Btn({ label, onClick, color }) {
 
 function TaskRow({ task, accent, onMove, onDelete, onToday }) {
   const [hov, setHov] = useState(false)
+  const isDone  = task.status === 'done'
+  const isToday = !!task.today && !isDone
   return (
     <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{ display:'flex', alignItems:'center', gap:'6px', padding:'4px 3px', borderRadius:'5px', background:hov?'#f7f7f7':'transparent', transition:'background 0.1s' }}>
-      <input type="checkbox" checked={!!task.today} onChange={onToday}
-        style={{ accentColor:accent, width:11, height:11, cursor:'pointer', flexShrink:0, margin:0 }} />
-      <span style={{ flex:1, fontSize:'12px', lineHeight:'1.35', color:task.status==='done'?'#bbb':'#222', textDecoration:task.status==='done'?'line-through':'none', fontWeight:task.today?600:400 }}>{task.text}</span>
+      {!isDone && (
+        <button onClick={onToday} title={isToday ? 'Quitar de hoy' : 'Hacer hoy'}
+          style={{
+            flexShrink:0, cursor:'pointer', border:'none', borderRadius:'4px', padding:'1px 5px',
+            fontSize:'9px', fontWeight:700, letterSpacing:'0.5px',
+            background: isToday ? `${BRAND}18` : '#f0f0f0',
+            color: isToday ? BRAND : '#ccc',
+            transition:'all 0.15s', lineHeight:'16px',
+          }}>
+          HOY
+        </button>
+      )}
+      <span style={{ flex:1, fontSize:'12px', lineHeight:'1.35', color:isDone?'#bbb':'#222', textDecoration:isDone?'line-through':'none', fontWeight:isToday?600:400 }}>{task.text}</span>
       {hov && (
         <div style={{ display:'flex', gap:'1px', flexShrink:0 }}>
           {task.status!=='todo'  && <Btn label="←" onClick={()=>onMove(task.status==='doing'?'todo':'doing')} color="#bbb" />}
@@ -178,6 +209,7 @@ function TaskRow({ task, accent, onMove, onDelete, onToday }) {
   )
 }
 
+// ── Main App ──────────────────────────────────────────────────
 function KanvuuMain({ session, t, lang, setLang, onLogout }) {
   const token  = session.access_token
   const userId = session.user?.id
@@ -249,12 +281,17 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
     setNewText(''); setAdding({})
   }
 
-  const moveTask  = async (tid,s) => { setTasks(ts=>ts.map(t=>t.id===tid?{...t,status:s}:t)); await db.update('tasks',`id=eq.${tid}`,{status:s},token).catch(console.error) }
-  const delTask   = async (tid)   => { setTasks(ts=>ts.filter(t=>t.id!==tid)); await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error) }
+  const moveTask  = async (tid,s) => {
+    // If moving to done, also remove today flag
+    const update = s === 'done' ? { status:s, today:false } : { status:s }
+    setTasks(ts=>ts.map(t=>t.id===tid?{...t,...update}:t))
+    await db.update('tasks',`id=eq.${tid}`,update,token).catch(console.error)
+  }
+  const delTask   = async (tid)     => { setTasks(ts=>ts.filter(t=>t.id!==tid)); await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error) }
   const todayTask = async (tid,cur) => { setTasks(ts=>ts.map(t=>t.id===tid?{...t,today:!cur}:t)); await db.update('tasks',`id=eq.${tid}`,{today:!cur},token).catch(console.error) }
   const handleLogout = async () => { await supaFetch('/auth/v1/logout',{method:'POST'},token).catch(()=>{}); onLogout() }
 
-  const gToday = tasks.filter(t=>t.today).length
+  const gToday = tasks.filter(t=>t.today && t.status !== 'done').length
   const gTodo  = tasks.filter(t=>t.status==='todo').length
   const gDoing = tasks.filter(t=>t.status==='doing').length
   const gDone  = tasks.filter(t=>t.status==='done').length
@@ -284,23 +321,29 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
         </div>
       )}
 
-      <div style={{ padding:'14px 24px', borderBottom:'1.5px solid #111', display:'flex', alignItems:'center', gap:'20px' }}>
-        <span style={{ fontWeight:800, fontSize:'15px', letterSpacing:'-0.5px' }}>Kanvuu</span>
+      {/* Header */}
+      <div style={{ padding:'12px 24px', borderBottom:`2px solid ${BRAND}`, display:'flex', alignItems:'center', gap:'20px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+          <Logo size={28} />
+          <span style={{ fontWeight:800, fontSize:'15px', letterSpacing:'-0.5px', color:BRAND }}>Kanvuu</span>
+        </div>
+
         <div style={{ display:'flex', gap:'16px' }}>
           {[{l:t.hoy,v:gToday,bold:true},{l:t.todo,v:gTodo},{l:t.doing,v:gDoing},{l:t.done,v:gDone}].map(x=>(
             <div key={x.l} style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
-              <span style={{ fontWeight:x.bold?700:500, fontSize:x.bold?'14px':'13px' }}>{x.v}</span>
+              <span style={{ fontWeight:x.bold?700:500, fontSize:x.bold?'14px':'13px', color:x.bold?BRAND:'#111' }}>{x.v}</span>
               <span style={{ color:'#aaa', fontSize:'11px' }}>{x.l}</span>
             </div>
           ))}
         </div>
+
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'10px' }}>
           <button onClick={()=>setLang(l=>l==='es'?'en':'es')}
             style={{ background:'#f5f5f5', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'11px', cursor:'pointer', fontWeight:600, color:'#555' }}>
             {lang==='es'?'EN':'ES'}
           </button>
           <button onClick={()=>setAddProj(true)}
-            style={{ background:'#111', color:'#fff', border:'none', borderRadius:'6px', padding:'6px 13px', fontSize:'12px', cursor:'pointer' }}>
+            style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 13px', fontSize:'12px', cursor:'pointer' }}>
             {t.newProject}
           </button>
           <button onClick={handleLogout}
@@ -315,9 +358,9 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
           <input autoFocus value={projName} onChange={e=>setProjName(e.target.value)}
             onKeyDown={e=>{ if(e.key==='Enter') addProject(); if(e.key==='Escape') setAddProj(false) }}
             placeholder={t.projectName}
-            style={{ border:'1px solid #ddd', borderRadius:'6px', padding:'6px 10px', fontSize:'13px', outline:'none', width:'240px' }}
+            style={{ border:`1px solid ${BRAND}44`, borderRadius:'6px', padding:'6px 10px', fontSize:'13px', outline:'none', width:'240px' }}
           />
-          <button onClick={addProject} style={{ background:'#111', color:'#fff', border:'none', borderRadius:'6px', padding:'6px 13px', fontSize:'12px', cursor:'pointer' }}>{t.create}</button>
+          <button onClick={addProject} style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 13px', fontSize:'12px', cursor:'pointer' }}>{t.create}</button>
           <button onClick={()=>setAddProj(false)} style={{ background:'none', border:'none', color:'#bbb', fontSize:'16px', cursor:'pointer' }}>✕</button>
         </div>
       )}
@@ -351,7 +394,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
                 )}
                 {!proj.open && (
                   <div style={{ display:'flex', gap:'6px', marginLeft:'4px' }}>
-                    {todayN>0 && <Badge label={`${todayN} ${t.hoy.toLowerCase()}`} bg={`${accent}15`} color={accent} />}
+                    {todayN>0 && <Badge label={`${todayN} ${t.hoy.toLowerCase()}`} bg={`${BRAND}12`} color={BRAND} />}
                     {todoN>0  && <Badge label={`${todoN} ${t.todo.toLowerCase()}`}  bg="#f5f5f5" color="#777" />}
                     {doingN>0 && <Badge label={`${doingN} ${t.doing.toLowerCase()}`} bg="#fff7ed" color="#ea580c" />}
                     {doneN>0  && <Badge label={`${doneN} ${t.done.toLowerCase()}`}  bg="#f0fdf4" color="#16a34a" />}
@@ -361,7 +404,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
               <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'0 20px 0 12px', flexShrink:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                   <div style={{ width:64, height:2, background:'#eee', borderRadius:2, overflow:'hidden' }}>
-                    <div style={{ width:`${pct}%`, height:'100%', background:accent, transition:'width 0.3s' }} />
+                    <div style={{ width:`${pct}%`, height:'100%', background:BRAND, transition:'width 0.3s' }} />
                   </div>
                   <span style={{ fontSize:'11px', color:'#aaa', minWidth:'24px' }}>{pct}%</span>
                 </div>
