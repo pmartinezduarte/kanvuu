@@ -1,5 +1,5 @@
-import KanvuuApp from './KanvuuApp'
+import LandingPage from './LandingPage'
 
 export default function Page() {
-  return <KanvuuApp />
+  return <LandingPage />
 }
