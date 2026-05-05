@@ -1,4 +1,4 @@
-import KanvuuApp from './kanvuuApp'
+import KanvuuApp from './kanvuuApp.Js'
 
 export const metadata = {
   title: 'Kanvuu — App',
