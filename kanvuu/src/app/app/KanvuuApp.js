@@ -28,7 +28,7 @@ const T = {
     confirmDelete:'Delete', cancelDelete:'Cancel',
     noProjects:'Create your first project →',
     loading:'Loading...', errorPassMatch:'Passwords do not match.',
-    todayPanel:"Today's tasks", close:'Close', noToday:'No tasks for today.',
+    todayPanel:"Today's tasks", noToday:'No tasks for today.',
   },
   es: {
     tagline:'Tus proyectos, siempre claros.',
@@ -45,7 +45,7 @@ const T = {
     confirmDelete:'Eliminar', cancelDelete:'Cancelar',
     noProjects:'Crea tu primer proyecto →',
     loading:'Cargando...', errorPassMatch:'Las contraseñas no coinciden.',
-    todayPanel:'Tareas de hoy', close:'Cerrar', noToday:'No hay tareas para hoy.',
+    todayPanel:'Tareas de hoy', noToday:'No hay tareas para hoy.',
   }
 }
 
@@ -188,33 +188,26 @@ function TaskRow({ task, accent, onMove, onDelete, onToday, alwaysShowActions })
   const isToday = !!task.today && !isDone
   const showActions = hov || alwaysShowActions
   return (
-    <div
-      onMouseEnter={()=>setHov(true)}
-      onMouseLeave={()=>setHov(false)}
-      style={{ display:'flex', alignItems:'center', gap:'7px', padding:'6px 4px', borderRadius:'7px', background:hov?'#f7f7f7':'transparent', transition:'background 0.1s' }}>
-      {/* Arrows left */}
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{ display:'flex', alignItems:'center', gap:'6px', padding:'6px 4px', borderRadius:'7px', background:hov?'#f7f7f7':'transparent', transition:'background 0.1s' }}>
       {showActions && !isDone && (
         <div style={{ display:'flex', gap:'1px', flexShrink:0 }}>
-          {task.status!=='todo'  && <button onClick={()=>onMove(task.status==='doing'?'todo':'doing')} style={{ background:'none', border:'none', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 3px', lineHeight:1 }}>←</button>}
-          {task.status!=='done'  && <button onClick={()=>onMove(task.status==='todo'?'doing':'done')}  style={{ background:'none', border:'none', color:accent, cursor:'pointer', fontSize:'12px', padding:'2px 3px', lineHeight:1 }}>→</button>}
+          {task.status!=='todo' && <button onClick={()=>onMove(task.status==='doing'?'todo':'doing')} style={{ background:'none', border:'none', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 3px' }}>←</button>}
+          {task.status!=='done' && <button onClick={()=>onMove(task.status==='todo'?'doing':'done')} style={{ background:'none', border:'none', color:accent, cursor:'pointer', fontSize:'12px', padding:'2px 3px' }}>→</button>}
         </div>
       )}
-      {/* Today tag */}
       {!isDone && (
-        <button onClick={onToday}
-          style={{
-            flexShrink:0, cursor:'pointer', border:'none', borderRadius:'4px',
-            padding:'2px 6px', fontSize:'9px', fontWeight:700, letterSpacing:'0.5px',
-            background: isToday ? `${BRAND}18` : '#f0f0f0',
-            color: isToday ? BRAND : '#ccc',
-            transition:'all 0.15s', lineHeight:'16px', minHeight:'20px',
-          }}>
-          HOY
-        </button>
+        <button onClick={onToday} style={{
+          flexShrink:0, cursor:'pointer', border:'none', borderRadius:'4px',
+          padding:'2px 6px', fontSize:'9px', fontWeight:700, letterSpacing:'0.5px',
+          background: isToday ? `${BRAND}18` : '#f0f0f0',
+          color: isToday ? BRAND : '#ccc',
+          transition:'all 0.15s', lineHeight:'16px', minHeight:'20px',
+        }}>HOY</button>
       )}
       <span style={{ flex:1, fontSize:'13px', lineHeight:'1.4', color:isDone?'#bbb':'#222', textDecoration:isDone?'line-through':'none', fontWeight:isToday?600:400 }}>{task.text}</span>
       {showActions && (
-        <button onClick={onDelete} style={{ background:'none', border:'none', color:'#ddd', cursor:'pointer', fontSize:'12px', padding:'2px 3px', lineHeight:1, flexShrink:0 }}>✕</button>
+        <button onClick={onDelete} style={{ background:'none', border:'none', color:'#ddd', cursor:'pointer', fontSize:'12px', padding:'2px 3px', flexShrink:0 }}>✕</button>
       )}
     </div>
   )
@@ -255,6 +248,126 @@ function TodayPanel({ tasks, projects, t, onClose, onTodayTask, onMoveTask }) {
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Mobile Project Card — proper component with its own state ──
+function MobileProjectCard({ proj, tasks, t, lang, accent, isFirst, isLast,
+  onToggle, onDelete, onMoveUp, onMoveDown,
+  editProj, editVal, setEditVal, onEditStart, onEditSave, onEditCancel,
+  adding, setAdding, newText, setNewText, onAddTask, onMoveTask, onDelTask, onTodayTask }) {
+
+  const [activeCol, setActiveCol] = useState('todo')
+
+  const pTasks = tasks.filter(tk=>tk.project_id===proj.id)
+  const todayN = pTasks.filter(tk=>tk.today&&tk.status!=='done').length
+  const doneN  = pTasks.filter(tk=>tk.status==='done').length
+  const doingN = pTasks.filter(tk=>tk.status==='doing').length
+  const todoN  = pTasks.filter(tk=>tk.status==='todo').length
+  const pct    = pTasks.length ? Math.round(doneN/pTasks.length*100) : 0
+
+  return (
+    <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderLeft:`3px solid ${accent}`, borderRadius:'12px', overflow:'hidden', marginBottom:'12px' }}>
+
+      {/* Header */}
+      <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:'8px' }}>
+        {/* Arrows left */}
+        <div style={{ display:'flex', flexDirection:'column', gap:'3px', flexShrink:0 }}>
+          <button onClick={onMoveUp} disabled={isFirst}
+            style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isFirst?'#eee':'#999', cursor:isFirst?'default':'pointer', fontSize:'10px', padding:'1px 6px', lineHeight:1.5 }}>↑</button>
+          <button onClick={onMoveDown} disabled={isLast}
+            style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isLast?'#eee':'#999', cursor:isLast?'default':'pointer', fontSize:'10px', padding:'1px 6px', lineHeight:1.5 }}>↓</button>
+        </div>
+
+        {/* Toggle + name */}
+        <div onClick={onToggle} style={{ display:'flex', alignItems:'center', gap:'7px', flex:1, cursor:'pointer', userSelect:'none', minWidth:0 }}>
+          <span style={{ fontSize:'10px', color:'#ccc', flexShrink:0 }}>{proj.open?'▼':'▶'}</span>
+          {editProj===proj.id ? (
+            <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)}
+              onClick={e=>e.stopPropagation()}
+              onBlur={()=>onEditSave(proj.id)}
+              onKeyDown={e=>{ if(e.key==='Enter') onEditSave(proj.id); if(e.key==='Escape') onEditCancel() }}
+              style={{ border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'14px', fontWeight:700, background:'transparent', flex:1, minWidth:0 }}
+            />
+          ) : (
+            <span onDoubleClick={e=>{ e.stopPropagation(); onEditStart(proj) }}
+              style={{ fontWeight:700, fontSize:'14px', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {proj.name}
+            </span>
+          )}
+        </div>
+
+        {todayN>0 && <Badge label={`${todayN} hoy`} bg={`${BRAND}12`} color={BRAND} />}
+        <button onClick={onDelete} style={{ background:'none', border:'1px solid #eee', borderRadius:'5px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 7px', lineHeight:1.6, flexShrink:0 }}>✕</button>
+      </div>
+
+      {/* Progress */}
+      <div style={{ padding:'0 14px 10px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          <div style={{ flex:1, height:3, background:'#eee', borderRadius:3, overflow:'hidden' }}>
+            <div style={{ width:`${pct}%`, height:'100%', background:BRAND, transition:'width 0.3s' }} />
+          </div>
+          <span style={{ fontSize:'11px', color:'#aaa', minWidth:'28px' }}>{pct}%</span>
+        </div>
+        <div style={{ display:'flex', gap:'6px', marginTop:'6px', flexWrap:'wrap' }}>
+          {todoN>0  && <Badge label={`${todoN} por hacer`} bg="#f5f5f5" color="#777" />}
+          {doingN>0 && <Badge label={`${doingN} en curso`} bg="#fff7ed" color="#ea580c" />}
+          {doneN>0  && <Badge label={`${doneN} listo`}     bg="#f0fdf4" color="#16a34a" />}
+        </div>
+      </div>
+
+      {/* Expanded */}
+      {proj.open && (
+        <div style={{ borderTop:'1px solid #f4f4f4' }}>
+          {/* Col tabs */}
+          <div style={{ display:'flex', borderBottom:'1px solid #f4f4f4' }}>
+            {COLS.map(col=>(
+              <button key={col.key} onClick={()=>setActiveCol(col.key)}
+                style={{ flex:1, padding:'9px 4px', border:'none', cursor:'pointer',
+                  background: activeCol===col.key?'#fff':'#fafafa',
+                  borderBottom: activeCol===col.key?`2px solid ${col.color}`:'2px solid transparent',
+                  fontSize:'10px', fontWeight:600, textTransform:'uppercase', letterSpacing:'1px',
+                  color: activeCol===col.key?col.color:'#bbb' }}>
+                {lang==='es'?col.es:col.en}
+                {pTasks.filter(tk=>tk.status===col.key).length>0 ? ` (${pTasks.filter(tk=>tk.status===col.key).length})` : ''}
+              </button>
+            ))}
+          </div>
+
+          {/* Tasks */}
+          <div style={{ padding:'10px 14px 12px' }}>
+            {pTasks.filter(tk=>tk.status===activeCol).map(task=>(
+              <TaskRow key={task.id} task={task} accent={accent} alwaysShowActions={true}
+                onMove={s=>onMoveTask(task.id,s)}
+                onDelete={()=>onDelTask(task.id)}
+                onToday={()=>onTodayTask(task.id,task.today)}
+              />
+            ))}
+            {pTasks.filter(tk=>tk.status===activeCol).length===0 && (
+              <div style={{ color:'#ddd', fontSize:'12px', padding:'8px 0' }}>Sin tareas</div>
+            )}
+
+            {/* Add task */}
+            {adding.pid===proj.id && adding.col===activeCol ? (
+              <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
+                <input autoFocus value={newText} onChange={e=>setNewText(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==='Enter') onAddTask(proj.id,activeCol); if(e.key==='Escape'){ setAdding({}); setNewText('') } }}
+                  placeholder="Nueva tarea…"
+                  style={{ flex:1, border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'14px', padding:'6px 2px', background:'transparent' }}
+                />
+                <button onClick={()=>onAddTask(proj.id,activeCol)}
+                  style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 14px', cursor:'pointer', fontSize:'16px', fontWeight:'bold' }}>+</button>
+              </div>
+            ) : (
+              <button onClick={()=>{ setAdding({pid:proj.id,col:activeCol}); setNewText('') }}
+                style={{ marginTop:'8px', background:'none', border:'1px dashed #e5e5e5', borderRadius:'7px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'7px 12px', width:'100%', textAlign:'left' }}>
+                + tarea
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -369,15 +482,15 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
     await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error)
   }
 
-  const todayTask = async (tid,cur) => {
+  const todayTask = async (tid, cur) => {
     const newToday = !cur
     setTasks(ts => {
       const task = ts.find(t=>t.id===tid)
       if (!task) return ts
       const rest = ts.filter(t=>t.id!==tid)
       if (newToday) {
-        const before   = rest.filter(t=>!(t.project_id===task.project_id && t.status===task.status))
-        const sameCol  = rest.filter(t=>t.project_id===task.project_id && t.status===task.status)
+        const before  = rest.filter(t=>!(t.project_id===task.project_id && t.status===task.status))
+        const sameCol = rest.filter(t=>t.project_id===task.project_id && t.status===task.status)
         return [...before, {...task,today:newToday}, ...sameCol]
       }
       return ts.map(t=>t.id===tid?{...t,today:newToday}:t)
@@ -403,9 +516,8 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
   )
 
   return (
-    <div style={{ minHeight:'100vh', background: mobile?'#f5f5f5':'#fff', fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif", color:'#111', fontSize:'13px' }}>
+    <div style={{ minHeight:'100vh', background:mobile?'#f5f5f5':'#fff', fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif", color:'#111', fontSize:'13px' }}>
 
-      {/* Today panel */}
       {showToday && (
         <TodayPanel tasks={tasks} projects={projects} t={t}
           onClose={()=>setShowToday(false)}
@@ -414,7 +526,6 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
         />
       )}
 
-      {/* Confirm delete */}
       {confirmDel && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:998, display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
           <div style={{ background:'#fff', borderRadius:'14px', padding:'24px', boxShadow:'0 8px 32px rgba(0,0,0,0.15)', maxWidth:'320px', width:'100%' }}>
@@ -431,15 +542,13 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
       )}
 
       {/* Header */}
-      <div style={{ padding: mobile?'12px 16px':'12px 24px', borderBottom:`2px solid ${BRAND}`, display:'flex', alignItems:'center', gap:'12px', background:'#fff', position:'sticky', top:0, zIndex:100 }}>
+      <div style={{ padding:mobile?'12px 16px':'12px 24px', borderBottom:`2px solid ${BRAND}`, display:'flex', alignItems:'center', gap:'12px', background:'#fff', position:'sticky', top:0, zIndex:100 }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
           <Logo size={mobile?22:26} />
-          <span style={{ fontWeight:800, fontSize: mobile?'13px':'15px', letterSpacing:'-0.5px', color:BRAND }}>Kanvuu</span>
+          <span style={{ fontWeight:800, fontSize:mobile?'13px':'15px', letterSpacing:'-0.5px', color:BRAND }}>Kanvuu</span>
         </div>
 
-        {/* Stats */}
-        <div style={{ display:'flex', gap: mobile?'10px':'16px', overflowX:'auto', flex:1, scrollbarWidth:'none', msOverflowStyle:'none' }}>
-          {/* Today — clickable */}
+        <div style={{ display:'flex', gap:mobile?'10px':'16px', overflowX:'auto', flex:1, scrollbarWidth:'none' }}>
           <button onClick={()=>setShowToday(true)}
             style={{ display:'flex', alignItems:'baseline', gap:'3px', flexShrink:0, background:'none', border:'none', cursor:'pointer', padding:0 }}>
             <span style={{ fontWeight:700, fontSize:'14px', color:BRAND }}>{gToday}</span>
@@ -459,9 +568,9 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
             {lang==='es'?'EN':'ES'}
           </button>
           {mobile ? (
-            <div style={{ position:'relative' }}>
+            <div style={{ position:'relative', display:'flex', gap:'4px' }}>
               <button onClick={()=>setAddProj(true)}
-                style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'16px', cursor:'pointer', lineHeight:1, fontWeight:'bold', marginRight:'4px' }}>+</button>
+                style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'16px', cursor:'pointer', lineHeight:1, fontWeight:'bold' }}>+</button>
               <button onClick={()=>setMenuOpen(m=>!m)}
                 style={{ background:'#f5f5f5', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'14px', cursor:'pointer' }}>⋮</button>
               {menuOpen && (
@@ -488,9 +597,8 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
         </div>
       </div>
 
-      {/* Add project bar */}
       {addProj && (
-        <div style={{ padding: mobile?'12px 16px':'10px 24px', borderBottom:'1px solid #f0f0f0', display:'flex', gap:'8px', background:'#fff' }}>
+        <div style={{ padding:mobile?'12px 16px':'10px 24px', borderBottom:'1px solid #f0f0f0', display:'flex', gap:'8px', background:'#fff' }}>
           <input autoFocus value={projName} onChange={e=>setProjName(e.target.value)}
             onKeyDown={e=>{ if(e.key==='Enter') addProject(); if(e.key==='Escape') setAddProj(false) }}
             placeholder={t.projectName}
@@ -502,208 +610,133 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
       )}
 
       {/* Projects */}
-      <div style={{ padding: mobile?'16px':'0' }}>
-        {projects.map((proj, pi) => {
-          const accent = ACCENTS[proj.color_idx%ACCENTS.length]
-          const pTasks = tasks.filter(t=>t.project_id===proj.id)
-          const todayN = pTasks.filter(t=>t.today&&t.status!=='done').length
-          const doneN  = pTasks.filter(t=>t.status==='done').length
-          const doingN = pTasks.filter(t=>t.status==='doing').length
-          const todoN  = pTasks.filter(t=>t.status==='todo').length
-          const pct    = pTasks.length ? Math.round(doneN/pTasks.length*100) : 0
-          const isFirst = pi===0
-          const isLast  = pi===projects.length-1
-
-          if (mobile) {
-            // ── Mobile card ──
-            const [activeCol, setActiveCol] = useState('todo')
+      <div style={{ padding:mobile?'16px':'0' }}>
+        {mobile ? (
+          projects.map((proj, pi) => {
+            const accent = ACCENTS[proj.color_idx%ACCENTS.length]
             return (
-              <div key={proj.id} style={{ background:'#fff', border:'1px solid #ebebeb', borderLeft:`3px solid ${accent}`, borderRadius:'12px', overflow:'hidden', marginBottom:'12px' }}>
-                {/* Header */}
-                <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:'8px' }}>
-                  {/* Arrows LEFT */}
-                  <div style={{ display:'flex', flexDirection:'column', gap:'2px', flexShrink:0 }}>
+              <MobileProjectCard key={proj.id}
+                proj={proj} tasks={tasks} t={t} lang={lang} accent={accent}
+                isFirst={pi===0} isLast={pi===projects.length-1}
+                onToggle={()=>toggleProject(proj.id)}
+                onDelete={()=>setConfirmDel(proj.id)}
+                onMoveUp={()=>moveProjectUp(proj.id)}
+                onMoveDown={()=>moveProjectDown(proj.id)}
+                editProj={editProj} editVal={editVal} setEditVal={setEditVal}
+                onEditStart={p=>{ setEditProj(p.id); setEditVal(p.name) }}
+                onEditSave={saveEditProj}
+                onEditCancel={()=>setEditProj(null)}
+                adding={adding} setAdding={setAdding}
+                newText={newText} setNewText={setNewText}
+                onAddTask={addTask}
+                onMoveTask={moveTask}
+                onDelTask={delTask}
+                onTodayTask={todayTask}
+              />
+            )
+          })
+        ) : (
+          projects.map((proj, pi) => {
+            const accent = ACCENTS[proj.color_idx%ACCENTS.length]
+            const pTasks = tasks.filter(t=>t.project_id===proj.id)
+            const todayN = pTasks.filter(t=>t.today&&t.status!=='done').length
+            const doneN  = pTasks.filter(t=>t.status==='done').length
+            const doingN = pTasks.filter(t=>t.status==='doing').length
+            const todoN  = pTasks.filter(t=>t.status==='todo').length
+            const pct    = pTasks.length ? Math.round(doneN/pTasks.length*100) : 0
+            const isFirst = pi===0
+            const isLast  = pi===projects.length-1
+
+            return (
+              <div key={proj.id} style={{ borderBottom:'1px solid #ebebeb' }}>
+                <div style={{ display:'flex', alignItems:'center', background:pi%2===0?'#fff':'#fafafa' }}>
+                  {/* Arrows left */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:'2px', padding:'0 8px 0 16px', flexShrink:0 }}>
                     <button onClick={()=>moveProjectUp(proj.id)} disabled={isFirst}
-                      style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isFirst?'#eee':'#999', cursor:isFirst?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↑</button>
+                      style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isFirst?'#eee':'#aaa', cursor:isFirst?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↑</button>
                     <button onClick={()=>moveProjectDown(proj.id)} disabled={isLast}
-                      style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isLast?'#eee':'#999', cursor:isLast?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↓</button>
+                      style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isLast?'#eee':'#aaa', cursor:isLast?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↓</button>
                   </div>
 
-                  {/* Toggle + name */}
-                  <div onClick={()=>toggleProject(proj.id)} style={{ display:'flex', alignItems:'center', gap:'7px', flex:1, cursor:'pointer', userSelect:'none', minWidth:0 }}>
-                    <span style={{ fontSize:'10px', color:'#ccc' }}>{proj.open?'▼':'▶'}</span>
+                  <div onClick={()=>toggleProject(proj.id)}
+                    style={{ flex:1, padding:'11px 0', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', userSelect:'none', minWidth:0 }}>
+                    <span style={{ fontSize:'9px', color:'#ccc', flexShrink:0 }}>{proj.open?'▼':'▶'}</span>
+                    <div style={{ width:7, height:7, borderRadius:'50%', background:accent, flexShrink:0 }} />
                     {editProj===proj.id ? (
                       <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)}
                         onClick={e=>e.stopPropagation()}
                         onBlur={()=>saveEditProj(proj.id)}
                         onKeyDown={e=>{ if(e.key==='Enter') saveEditProj(proj.id); if(e.key==='Escape') setEditProj(null) }}
-                        style={{ border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'14px', fontWeight:700, background:'transparent', flex:1 }}
+                        style={{ border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'13px', fontWeight:600, background:'transparent' }}
                       />
                     ) : (
                       <span onDoubleClick={e=>{ e.stopPropagation(); setEditProj(proj.id); setEditVal(proj.name) }}
-                        style={{ fontWeight:700, fontSize:'14px', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{proj.name}</span>
+                        style={{ fontWeight:600, fontSize:'13px' }}>{proj.name}</span>
+                    )}
+                    {!proj.open && (
+                      <div style={{ display:'flex', gap:'6px', marginLeft:'4px' }}>
+                        {todayN>0 && <Badge label={`${todayN} ${t.hoy.toLowerCase()}`} bg={`${BRAND}12`} color={BRAND} />}
+                        {todoN>0  && <Badge label={`${todoN} ${t.todo.toLowerCase()}`}  bg="#f5f5f5" color="#777" />}
+                        {doingN>0 && <Badge label={`${doingN} ${t.doing.toLowerCase()}`} bg="#fff7ed" color="#ea580c" />}
+                        {doneN>0  && <Badge label={`${doneN} ${t.done.toLowerCase()}`}  bg="#f0fdf4" color="#16a34a" />}
+                      </div>
                     )}
                   </div>
 
-                  {todayN>0 && <Badge label={`${todayN} hoy`} bg={`${BRAND}12`} color={BRAND} />}
-                  <button onClick={()=>setConfirmDel(proj.id)} style={{ background:'none', border:'1px solid #eee', borderRadius:'5px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 7px', lineHeight:1.6, flexShrink:0 }}>✕</button>
-                </div>
-
-                {/* Progress */}
-                <div style={{ padding:'0 14px 10px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                    <div style={{ flex:1, height:3, background:'#eee', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'0 20px 0 12px', flexShrink:0 }}>
+                    <div style={{ width:64, height:2, background:'#eee', borderRadius:2, overflow:'hidden' }}>
                       <div style={{ width:`${pct}%`, height:'100%', background:BRAND, transition:'width 0.3s' }} />
                     </div>
-                    <span style={{ fontSize:'11px', color:'#aaa' }}>{pct}%</span>
-                  </div>
-                  <div style={{ display:'flex', gap:'6px', marginTop:'6px', flexWrap:'wrap' }}>
-                    {todoN>0  && <Badge label={`${todoN} por hacer`}  bg="#f5f5f5" color="#777" />}
-                    {doingN>0 && <Badge label={`${doingN} en curso`}  bg="#fff7ed" color="#ea580c" />}
-                    {doneN>0  && <Badge label={`${doneN} listo`}      bg="#f0fdf4" color="#16a34a" />}
+                    <span style={{ fontSize:'11px', color:'#aaa', minWidth:'24px' }}>{pct}%</span>
+                    <button onClick={()=>setConfirmDel(proj.id)}
+                      style={{ background:'none', border:'1px solid #eee', borderRadius:'5px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 8px', lineHeight:1.6 }}>✕</button>
                   </div>
                 </div>
 
-                {/* Expanded */}
                 {proj.open && (
-                  <div style={{ borderTop:'1px solid #f4f4f4' }}>
-                    <div style={{ display:'flex', borderBottom:'1px solid #f4f4f4' }}>
-                      {COLS.map(col=>(
-                        <button key={col.key} onClick={()=>setActiveCol(col.key)}
-                          style={{ flex:1, padding:'9px 4px', border:'none', cursor:'pointer',
-                            background: activeCol===col.key?'#fff':'#fafafa',
-                            borderBottom: activeCol===col.key?`2px solid ${col.color}`:'2px solid transparent',
-                            fontSize:'10px', fontWeight:600, textTransform:'uppercase', letterSpacing:'1px',
-                            color: activeCol===col.key?col.color:'#bbb', transition:'all 0.15s' }}>
-                          {lang==='es'?col.es:col.en}{pTasks.filter(t=>t.status===col.key).length>0?` (${pTasks.filter(t=>t.status===col.key).length})`:''}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ padding:'10px 14px 12px' }}>
-                      {pTasks.filter(t=>t.status===activeCol).map(task=>(
-                        <TaskRow key={task.id} task={task} accent={accent} alwaysShowActions={true}
-                          onMove={s=>moveTask(task.id,s)}
-                          onDelete={()=>delTask(task.id)}
-                          onToday={()=>todayTask(task.id,task.today)}
-                        />
-                      ))}
-                      {pTasks.filter(t=>t.status===activeCol).length===0 && (
-                        <div style={{ color:'#ddd', fontSize:'12px', padding:'8px 0' }}>Sin tareas</div>
-                      )}
-                      {adding.pid===proj.id && adding.col===activeCol ? (
-                        <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
-                          <input autoFocus value={newText} onChange={e=>setNewText(e.target.value)}
-                            onKeyDown={e=>{ if(e.key==='Enter') addTask(proj.id,activeCol); if(e.key==='Escape'){ setAdding({}); setNewText('') } }}
-                            placeholder={t.newTask}
-                            style={{ flex:1, border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'14px', padding:'6px 2px', background:'transparent' }}
-                          />
-                          <button onClick={()=>addTask(proj.id,activeCol)}
-                            style={{ background:BRAND, color:'#fff', border:'none', borderRadius:'6px', padding:'6px 12px', cursor:'pointer', fontSize:'16px', fontWeight:'bold' }}>+</button>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', borderTop:'1px solid #f4f4f4' }}>
+                    {COLS.map((col,ci) => {
+                      const colTasks = pTasks.filter(t=>t.status===col.key)
+                      const isAdd    = adding.pid===proj.id && adding.col===col.key
+                      const label    = lang==='es'?col.es:col.en
+                      return (
+                        <div key={col.key} style={{ borderRight:ci<2?'1px solid #f4f4f4':'none', padding:'8px 12px 10px' }}>
+                          <div style={{ display:'flex', gap:'5px', alignItems:'center', marginBottom:'6px' }}>
+                            <span style={{ fontSize:'10px', fontWeight:600, textTransform:'uppercase', letterSpacing:'1.5px', color:col.color }}>{label}</span>
+                            <span style={{ fontSize:'11px', color:'#ccc' }}>{colTasks.length}</span>
+                          </div>
+                          {colTasks.map(task=>(
+                            <TaskRow key={task.id} task={task} accent={accent} alwaysShowActions={false}
+                              onMove={s=>moveTask(task.id,s)}
+                              onDelete={()=>delTask(task.id)}
+                              onToday={()=>todayTask(task.id,task.today)}
+                            />
+                          ))}
+                          {isAdd ? (
+                            <div style={{ display:'flex', gap:'4px', marginTop:'4px' }}>
+                              <input autoFocus value={newText} onChange={e=>setNewText(e.target.value)}
+                                onKeyDown={e=>{ if(e.key==='Enter') addTask(proj.id,col.key); if(e.key==='Escape'){ setAdding({}); setNewText('') } }}
+                                placeholder={t.newTask}
+                                style={{ flex:1, border:'none', borderBottom:`1px solid ${accent}`, outline:'none', fontSize:'12px', padding:'4px 2px', background:'transparent' }}
+                              />
+                              <button onClick={()=>addTask(proj.id,col.key)}
+                                style={{ background:'none', border:'none', color:accent, fontWeight:700, cursor:'pointer', fontSize:'14px' }}>+</button>
+                            </div>
+                          ) : (
+                            <button onClick={()=>{ setAdding({pid:proj.id,col:col.key}); setNewText('') }}
+                              style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', fontSize:'11px', padding:'3px 0', textAlign:'left', width:'100%' }}>
+                              {t.addTask}
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <button onClick={()=>{ setAdding({pid:proj.id,col:activeCol}); setNewText('') }}
-                          style={{ marginTop:'8px', background:'none', border:'1px dashed #e5e5e5', borderRadius:'7px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'7px 12px', width:'100%', textAlign:'left' }}>
-                          {t.addTask}
-                        </button>
-                      )}
-                    </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             )
-          }
-
-          // ── Desktop row ──
-          return (
-            <div key={proj.id} style={{ borderBottom:'1px solid #ebebeb' }}>
-              <div style={{ display:'flex', alignItems:'center', background:pi%2===0?'#fff':'#fafafa' }}>
-
-                {/* Arrows LEFT on desktop */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'2px', padding:'0 8px 0 16px', flexShrink:0 }}>
-                  <button onClick={()=>moveProjectUp(proj.id)} disabled={isFirst}
-                    style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isFirst?'#eee':'#aaa', cursor:isFirst?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↑</button>
-                  <button onClick={()=>moveProjectDown(proj.id)} disabled={isLast}
-                    style={{ background:'none', border:'1px solid #eee', borderRadius:'4px', color:isLast?'#eee':'#aaa', cursor:isLast?'default':'pointer', fontSize:'10px', padding:'1px 5px', lineHeight:1.4 }}>↓</button>
-                </div>
-
-                <div onClick={()=>toggleProject(proj.id)}
-                  style={{ flex:1, padding:'11px 0', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', userSelect:'none', minWidth:0 }}>
-                  <span style={{ fontSize:'9px', color:'#ccc', flexShrink:0 }}>{proj.open?'▼':'▶'}</span>
-                  <div style={{ width:7, height:7, borderRadius:'50%', background:accent, flexShrink:0 }} />
-                  {editProj===proj.id ? (
-                    <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)}
-                      onClick={e=>e.stopPropagation()}
-                      onBlur={()=>saveEditProj(proj.id)}
-                      onKeyDown={e=>{ if(e.key==='Enter') saveEditProj(proj.id); if(e.key==='Escape') setEditProj(null) }}
-                      style={{ border:'none', borderBottom:`1.5px solid ${accent}`, outline:'none', fontSize:'13px', fontWeight:600, background:'transparent' }}
-                    />
-                  ) : (
-                    <span onDoubleClick={e=>{ e.stopPropagation(); setEditProj(proj.id); setEditVal(proj.name) }}
-                      style={{ fontWeight:600, fontSize:'13px' }}>{proj.name}</span>
-                  )}
-                  {!proj.open && (
-                    <div style={{ display:'flex', gap:'6px', marginLeft:'4px' }}>
-                      {todayN>0 && <Badge label={`${todayN} ${t.hoy.toLowerCase()}`} bg={`${BRAND}12`} color={BRAND} />}
-                      {todoN>0  && <Badge label={`${todoN} ${t.todo.toLowerCase()}`}  bg="#f5f5f5" color="#777" />}
-                      {doingN>0 && <Badge label={`${doingN} ${t.doing.toLowerCase()}`} bg="#fff7ed" color="#ea580c" />}
-                      {doneN>0  && <Badge label={`${doneN} ${t.done.toLowerCase()}`}  bg="#f0fdf4" color="#16a34a" />}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'0 20px 0 12px', flexShrink:0 }}>
-                  <div style={{ width:64, height:2, background:'#eee', borderRadius:2, overflow:'hidden' }}>
-                    <div style={{ width:`${pct}%`, height:'100%', background:BRAND, transition:'width 0.3s' }} />
-                  </div>
-                  <span style={{ fontSize:'11px', color:'#aaa', minWidth:'24px' }}>{pct}%</span>
-                  <button onClick={()=>setConfirmDel(proj.id)}
-                    style={{ background:'none', border:'1px solid #eee', borderRadius:'5px', color:'#bbb', cursor:'pointer', fontSize:'12px', padding:'2px 8px', lineHeight:1.6 }}>✕</button>
-                </div>
-              </div>
-
-              {proj.open && (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', borderTop:'1px solid #f4f4f4' }}>
-                  {COLS.map((col,ci) => {
-                    const colTasks = pTasks.filter(t=>t.status===col.key)
-                    const isAdd    = adding.pid===proj.id && adding.col===col.key
-                    const label    = lang==='es'?col.es:col.en
-                    return (
-                      <div key={col.key} style={{ borderRight:ci<2?'1px solid #f4f4f4':'none', padding:'8px 12px 10px' }}>
-                        <div style={{ display:'flex', gap:'5px', alignItems:'center', marginBottom:'6px' }}>
-                          <span style={{ fontSize:'10px', fontWeight:600, textTransform:'uppercase', letterSpacing:'1.5px', color:col.color }}>{label}</span>
-                          <span style={{ fontSize:'11px', color:'#ccc' }}>{colTasks.length}</span>
-                        </div>
-                        {colTasks.map(task=>(
-                          <TaskRow key={task.id} task={task} accent={accent} alwaysShowActions={false}
-                            onMove={s=>moveTask(task.id,s)}
-                            onDelete={()=>delTask(task.id)}
-                            onToday={()=>todayTask(task.id,task.today)}
-                          />
-                        ))}
-                        {isAdd ? (
-                          <div style={{ display:'flex', gap:'4px', marginTop:'4px' }}>
-                            <input autoFocus value={newText} onChange={e=>setNewText(e.target.value)}
-                              onKeyDown={e=>{ if(e.key==='Enter') addTask(proj.id,col.key); if(e.key==='Escape'){ setAdding({}); setNewText('') } }}
-                              placeholder={t.newTask}
-                              style={{ flex:1, border:'none', borderBottom:`1px solid ${accent}`, outline:'none', fontSize:'12px', padding:'4px 2px', background:'transparent' }}
-                            />
-                            <button onClick={()=>addTask(proj.id,col.key)}
-                              style={{ background:'none', border:'none', color:accent, fontWeight:700, cursor:'pointer', fontSize:'14px' }}>+</button>
-                          </div>
-                        ) : (
-                          <button onClick={()=>{ setAdding({pid:proj.id,col:col.key}); setNewText('') }}
-                            style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', fontSize:'11px', padding:'3px 0', textAlign:'left', width:'100%' }}>
-                            {t.addTask}
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
+          })
+        )}
       </div>
 
       {projects.length===0 && !loading && (
