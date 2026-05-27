@@ -6,9 +6,8 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const BRAND   = '#166534'
 const ACCENTS = ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2']
 const COLS    = [
-  { key:'todo',  en:'To do',       es:'Por hacer',  color:'#555'    },
-  { key:'doing', en:'In progress', es:'En curso',   color:'#ea580c' },
-  { key:'done',  en:'Done',        es:'Completado', color:'#16a34a' },
+  { key:'todo', en:'To do',  es:'Por hacer',  color:'#555'    },
+  { key:'done', en:'Done',   es:'Completado', color:'#16a34a' },
 ]
 const T = {
   en:{
@@ -17,12 +16,14 @@ const T = {
     switchToRegister:"Don't have an account? Create one", switchToLogin:'Already have an account? Sign in',
     newGroup:'+ Group', groupName:'Group name...', newProject:'+ Project', projectName:'Project name...',
     create:'Create', addTask:'+ task', newTask:'New task...',
-    hoy:'Today', todo:'To do', doing:'In progress', done:'Done',
+    hoy:'Today', todo:'To do', done:'Done', inbox:'Inbox',
     deleteGroup:'Delete group?', deleteGroupMsg:'This will delete all projects and tasks inside.',
     deleteProject:'Delete project?', deleteMsg1:'This will delete', deleteMsg2:'and all its tasks.',
     confirmDelete:'Delete', cancelDelete:'Cancel',
     noGroups:'Create your first group →', loading:'Loading...', errorPassMatch:'Passwords do not match.',
     todayPanel:"Today's tasks", noToday:'No tasks for today.',
+    inboxTitle:'Inbox', inboxSub:'Tasks without a project', inboxEmpty:'No pending tasks in inbox.',
+    assignTo:'Assign to project', skip:'Later',
   },
   es:{
     tagline:'Tus proyectos, siempre claros.', login:'Iniciar sesión', register:'Crear cuenta', logout:'Cerrar sesión',
@@ -30,12 +31,14 @@ const T = {
     switchToRegister:'¿No tienes cuenta? Crea una', switchToLogin:'¿Ya tienes cuenta? Inicia sesión',
     newGroup:'+ Grupo', groupName:'Nombre del grupo...', newProject:'+ Proyecto', projectName:'Nombre del proyecto...',
     create:'Crear', addTask:'+ tarea', newTask:'Nueva tarea...',
-    hoy:'Hoy', todo:'Por hacer', doing:'En curso', done:'Completado',
+    hoy:'Hoy', todo:'Por hacer', done:'Completado', inbox:'Bandeja',
     deleteGroup:'¿Eliminar grupo?', deleteGroupMsg:'Se eliminarán todos los proyectos y tareas dentro.',
     deleteProject:'¿Eliminar proyecto?', deleteMsg1:'Se eliminará', deleteMsg2:'y todas sus tareas.',
     confirmDelete:'Eliminar', cancelDelete:'Cancelar',
     noGroups:'Crea tu primer grupo →', loading:'Cargando...', errorPassMatch:'Las contraseñas no coinciden.',
     todayPanel:'Tareas de hoy', noToday:'No hay tareas para hoy.',
+    inboxTitle:'Bandeja de entrada', inboxSub:'Tareas sin proyecto asignado', inboxEmpty:'No hay pendientes en la bandeja.',
+    assignTo:'Asignar a proyecto', skip:'Después',
   }
 }
 
@@ -60,9 +63,8 @@ function useIsMobile() {
   return m
 }
 
-function Logo({ size=28, white=false }) {
-  const bg=white?'#fff':BRAND, fg=white?BRAND:'#fff'
-  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="11" fill={bg}/><rect x="13" y="10" width="5" height="28" rx="2.5" fill={fg}/><path d="M18 24 L35 10" stroke={fg} strokeWidth="5" strokeLinecap="round"/><path d="M18 24 L35 38" stroke={fg} strokeWidth="5" strokeLinecap="round"/></svg>
+function Logo({ size=28 }) {
+  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="11" fill={BRAND}/><rect x="13" y="10" width="5" height="28" rx="2.5" fill="#fff"/><path d="M18 24 L35 10" stroke="#fff" strokeWidth="5" strokeLinecap="round"/><path d="M18 24 L35 38" stroke="#fff" strokeWidth="5" strokeLinecap="round"/></svg>
 }
 function Badge({ label, bg, color }) {
   return <span style={{fontSize:'10px',background:bg,color,borderRadius:'10px',padding:'1px 7px',fontWeight:500}}>{label}</span>
@@ -82,25 +84,22 @@ function AuthScreen({ t, onLogin, lang, setLang }) {
       } else {
         onLogin(await supaFetch('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pass})}))
       }
-    } catch(e) { setError(e.error_description||e.message||'Error. Intenta de nuevo.') }
+    } catch(e) { setError(e.error_description||e.message||'Error.') }
     setLoading(false)
   }
   const inp = {width:'100%',border:'1px solid #e5e5e5',borderRadius:'10px',padding:'13px 14px',fontSize:'16px',outline:'none',marginBottom:'12px',boxSizing:'border-box',fontFamily:'inherit',WebkitAppearance:'none'}
   return (
     <div style={{minHeight:'100vh',background:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif",padding:'24px'}}>
-      <div style={{position:'fixed',top:16,right:16}}>
-        <button onClick={()=>setLang(l=>l==='es'?'en':'es')} style={{background:'#f5f5f5',border:'none',borderRadius:'6px',padding:'6px 12px',fontSize:'12px',cursor:'pointer',fontWeight:600,color:'#555'}}>{lang==='es'?'EN':'ES'}</button>
-      </div>
+      <div style={{position:'fixed',top:16,right:16}}><button onClick={()=>setLang(l=>l==='es'?'en':'es')} style={{background:'#f5f5f5',border:'none',borderRadius:'6px',padding:'6px 12px',fontSize:'12px',cursor:'pointer',fontWeight:600,color:'#555'}}>{lang==='es'?'EN':'ES'}</button></div>
       <div style={{marginBottom:'36px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:'14px'}}>
-        <Logo size={60}/>
-        <div><div style={{fontSize:'32px',fontWeight:'800',letterSpacing:'-1px',color:BRAND}}>Kanvuu</div><div style={{fontSize:'14px',color:'#aaa',marginTop:'4px'}}>{t.tagline}</div></div>
+        <Logo size={60}/><div><div style={{fontSize:'32px',fontWeight:'800',letterSpacing:'-1px',color:BRAND}}>Kanvuu</div><div style={{fontSize:'14px',color:'#aaa',marginTop:'4px'}}>{t.tagline}</div></div>
       </div>
       <div style={{width:'100%',maxWidth:'380px'}}>
         <div style={{marginBottom:'18px',fontSize:'15px',fontWeight:'600',color:'#111'}}>{mode==='login'?t.login:t.register}</div>
-        {error && <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'10px',padding:'12px 14px',fontSize:'13px',color:'#dc2626',marginBottom:'16px'}}>{error}</div>}
+        {error&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'10px',padding:'12px 14px',fontSize:'13px',color:'#dc2626',marginBottom:'16px'}}>{error}</div>}
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder={t.email} type="email" style={inp}/>
         <input value={pass} onChange={e=>setPass(e.target.value)} placeholder={t.password} type="password" onKeyDown={e=>{if(e.key==='Enter'&&mode==='login')submit()}} style={inp}/>
-        {mode==='register' && <input value={pass2} onChange={e=>setPass2(e.target.value)} placeholder={t.confirmPassword} type="password" onKeyDown={e=>{if(e.key==='Enter')submit()}} style={inp}/>}
+        {mode==='register'&&<input value={pass2} onChange={e=>setPass2(e.target.value)} placeholder={t.confirmPassword} type="password" onKeyDown={e=>{if(e.key==='Enter')submit()}} style={inp}/>}
         <button onClick={submit} disabled={loading} style={{width:'100%',background:BRAND,color:'#fff',border:'none',borderRadius:'10px',padding:'14px',fontSize:'15px',fontWeight:'700',cursor:'pointer',opacity:loading?0.7:1,marginTop:'4px'}}>{loading?t.loading:(mode==='login'?t.loginBtn:t.registerBtn)}</button>
         <button onClick={()=>{setMode(m=>m==='login'?'register':'login');setError('')}} style={{width:'100%',background:'none',border:'none',color:'#888',fontSize:'13px',cursor:'pointer',marginTop:'16px',textDecoration:'underline',padding:'8px'}}>{mode==='login'?t.switchToRegister:t.switchToLogin}</button>
       </div>
@@ -109,7 +108,7 @@ function AuthScreen({ t, onLogin, lang, setLang }) {
 }
 
 // ── Task Card ─────────────────────────────────────────────────
-function TaskCard({ task, accent, onMove, onDelete, onToday, onEdit, alwaysShow, dragHandlers }) {
+function TaskCard({ task, accent, onComplete, onDelete, onToday, onEdit, alwaysShow, dragHandlers }) {
   const [hov,setHov]=useState(false), [editing,setEditing]=useState(false), [val,setVal]=useState(task.text)
   const isDone=task.status==='done', isToday=task.today&&!isDone, show=hov||alwaysShow
   const commit=()=>{ if(val.trim()) onEdit(val.trim()); setEditing(false) }
@@ -117,13 +116,30 @@ function TaskCard({ task, accent, onMove, onDelete, onToday, onEdit, alwaysShow,
     <div {...(dragHandlers||{})} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 4px',borderRadius:'7px',background:hov?'#f7f7f7':'transparent',transition:'background 0.1s',cursor:'grab'}}>
       <span style={{color:'#ccc',fontSize:'11px',flexShrink:0,lineHeight:1}}>⠿</span>
-      {show&&!isDone&&(
-        <div style={{display:'flex',gap:'1px',flexShrink:0}}>
-          {task.status!=='todo'&&<button onClick={()=>onMove(task.status==='doing'?'todo':'doing')} style={{background:'none',border:'none',color:'#bbb',cursor:'pointer',fontSize:'11px',padding:'1px 3px'}}>←</button>}
-          {task.status!=='done'&&<button onClick={()=>onMove(task.status==='todo'?'doing':'done')} style={{background:'none',border:'none',color:accent,cursor:'pointer',fontSize:'11px',padding:'1px 3px'}}>→</button>}
-        </div>
+
+      {/* Complete button */}
+      {!isDone && (
+        <button onClick={onComplete} title="Marcar como completado"
+          style={{flexShrink:0,cursor:'pointer',border:`1.5px solid ${accent}44`,borderRadius:'50%',width:'18px',height:'18px',background:'none',display:'flex',alignItems:'center',justifyContent:'center',padding:0,transition:'all 0.15s'}}
+          onMouseEnter={e=>{e.currentTarget.style.background=`${accent}18`;e.currentTarget.style.borderColor=accent}}
+          onMouseLeave={e=>{e.currentTarget.style.background='none';e.currentTarget.style.borderColor=`${accent}44`}}>
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
       )}
-      {!isDone&&<button onClick={onToday} style={{flexShrink:0,cursor:'pointer',border:'none',borderRadius:'4px',padding:'2px 5px',fontSize:'9px',fontWeight:700,background:isToday?`${BRAND}18`:'#f0f0f0',color:isToday?BRAND:'#ccc',lineHeight:'16px'}}>HOY</button>}
+
+      {/* Undo button for done tasks */}
+      {isDone && show && (
+        <button onClick={onComplete} title="Desmarcar"
+          style={{flexShrink:0,cursor:'pointer',border:'1.5px solid #ddd',borderRadius:'50%',width:'18px',height:'18px',background:'#f0fdf4',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      )}
+
+      {/* Today tag */}
+      {!isDone&&(
+        <button onClick={onToday} style={{flexShrink:0,cursor:'pointer',border:'none',borderRadius:'4px',padding:'2px 5px',fontSize:'9px',fontWeight:700,background:isToday?`${BRAND}18`:'#f0f0f0',color:isToday?BRAND:'#ccc',lineHeight:'16px'}}>HOY</button>
+      )}
+
       {editing ? (
         <input autoFocus value={val} onChange={e=>setVal(e.target.value)} onBlur={commit} onClick={e=>e.stopPropagation()}
           onKeyDown={e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){setVal(task.text);setEditing(false)}}}
@@ -139,8 +155,82 @@ function TaskCard({ task, accent, onMove, onDelete, onToday, onEdit, alwaysShow,
   )
 }
 
+// ── Inbox Panel ───────────────────────────────────────────────
+function InboxPanel({ tasks, projects, groups, t, token, userId, onClose, onRefresh }) {
+  const inbox = tasks.filter(t=>!t.project_id)
+  const [assigning, setAssigning] = useState(null)
+  const [selectedProj, setSelectedProj] = useState('')
+
+  const completeTask = async(tid) => {
+    await db.update('tasks',`id=eq.${tid}`,{status:'done'},token).catch(console.error)
+    onRefresh()
+  }
+  const deleteTask = async(tid) => {
+    await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error)
+    onRefresh()
+  }
+  const assignTask = async(tid) => {
+    if (!selectedProj) return
+    await db.update('tasks',`id=eq.${tid}`,{project_id:selectedProj},token).catch(console.error)
+    setAssigning(null); setSelectedProj(''); onRefresh()
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.2)',zIndex:999,display:'flex',alignItems:'flex-start',justifyContent:'flex-end',padding:'56px 16px 16px'}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:'14px',boxShadow:'0 8px 40px rgba(0,0,0,0.15)',width:'100%',maxWidth:'400px',overflow:'hidden'}}>
+        <div style={{padding:'16px 20px 12px',borderBottom:'1px solid #f0f0f0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:'15px'}}>{t.inboxTitle}</div>
+            <div style={{fontSize:'11px',color:'#aaa',marginTop:'2px'}}>{inbox.length} tareas · {t.inboxSub}</div>
+          </div>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'#bbb',cursor:'pointer',fontSize:'18px'}}>✕</button>
+        </div>
+        <div style={{maxHeight:'65vh',overflowY:'auto',padding:'12px 16px'}}>
+          {inbox.length===0&&<div style={{color:'#ccc',fontSize:'13px',padding:'20px 0',textAlign:'center'}}>{t.inboxEmpty}</div>}
+          {inbox.map(task=>(
+            <div key={task.id} style={{padding:'10px 12px',borderRadius:'10px',background:'#fafafa',border:'1px solid #f0f0f0',marginBottom:'8px'}}>
+              <div style={{fontSize:'13px',color:'#222',fontWeight:500,marginBottom:'8px'}}>{task.text}</div>
+              {assigning===task.id ? (
+                <div style={{display:'flex',gap:'6px'}}>
+                  <select value={selectedProj} onChange={e=>setSelectedProj(e.target.value)}
+                    style={{flex:1,border:'1px solid #ddd',borderRadius:'6px',padding:'5px 8px',fontSize:'12px',outline:'none'}}>
+                    <option value="">Selecciona proyecto...</option>
+                    {groups.map(g=>(
+                      <optgroup key={g.id} label={g.name}>
+                        {projects.filter(p=>p.group_id===g.id).map(p=>(
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <button onClick={()=>assignTask(task.id)} disabled={!selectedProj}
+                    style={{background:BRAND,color:'#fff',border:'none',borderRadius:'6px',padding:'5px 10px',fontSize:'12px',cursor:'pointer',fontWeight:600,opacity:selectedProj?1:0.5}}>Ok</button>
+                  <button onClick={()=>{setAssigning(null);setSelectedProj('')}} style={{background:'#f5f5f5',border:'none',borderRadius:'6px',padding:'5px 10px',fontSize:'12px',cursor:'pointer',color:'#888'}}>✕</button>
+                </div>
+              ) : (
+                <div style={{display:'flex',gap:'6px'}}>
+                  <button onClick={()=>setAssigning(task.id)}
+                    style={{flex:1,background:`${BRAND}10`,border:`1px solid ${BRAND}30`,borderRadius:'6px',padding:'5px 10px',fontSize:'11px',cursor:'pointer',color:BRAND,fontWeight:600}}>
+                    📁 {t.assignTo}
+                  </button>
+                  <button onClick={()=>completeTask(task.id)}
+                    style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'6px',padding:'5px 10px',fontSize:'11px',cursor:'pointer',color:'#16a34a',fontWeight:600}}>
+                    ✓ Listo
+                  </button>
+                  <button onClick={()=>deleteTask(task.id)}
+                    style={{background:'#fff',border:'1px solid #eee',borderRadius:'6px',padding:'5px 8px',fontSize:'11px',cursor:'pointer',color:'#bbb'}}>✕</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Today Panel ───────────────────────────────────────────────
-function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onMoveTask }) {
+function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onCompleteTask }) {
   const todayTasks = tasks.filter(t=>t.today&&t.status!=='done')
   const [order, setOrder] = useState(todayTasks.map(t=>t.id))
   const dragId = useRef(null)
@@ -169,8 +259,7 @@ function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onMove
             const acc   = proj ? ACCENTS[proj.color_idx%ACCENTS.length] : BRAND
             const isOver = dragOver===task.id
             return (
-              <div key={task.id}
-                draggable
+              <div key={task.id} draggable
                 onDragStart={()=>{ dragId.current=task.id }}
                 onDragOver={e=>{ e.preventDefault(); if(dragId.current&&dragId.current!==task.id) setDragOver(task.id) }}
                 onDrop={e=>{ e.preventDefault(); if(!dragId.current||dragId.current===task.id){setDragOver(null);return}
@@ -192,11 +281,16 @@ function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onMove
                     {proj&&<span style={{fontSize:'9px',color:acc,fontWeight:600}}>{proj.name}</span>}
                   </div>
                   <div style={{fontSize:'13px',color:'#222',fontWeight:600}}>{task.text}</div>
-                  <div style={{fontSize:'10px',color:COLS.find(c=>c.key===task.status)?.color,marginTop:'2px',fontWeight:500}}>{COLS.find(c=>c.key===task.status)?.label}</div>
                 </div>
-                <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                  {task.status!=='done'&&<button onClick={()=>onMoveTask(task.id,task.status==='todo'?'doing':'done')} style={{background:`${acc}15`,border:'none',borderRadius:'5px',color:acc,cursor:'pointer',fontSize:'11px',padding:'3px 8px',fontWeight:600}}>→</button>}
-                  <button onClick={()=>onToggleToday(task.id)} style={{background:`${BRAND}12`,border:'none',borderRadius:'5px',color:BRAND,cursor:'pointer',fontSize:'9px',fontWeight:700,padding:'3px 7px'}}>HOY</button>
+                <div style={{display:'flex',gap:'6px',flexShrink:0}}>
+                  {/* Complete button */}
+                  <button onClick={()=>onCompleteTask(task.id)}
+                    style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'5px 12px',fontSize:'12px',cursor:'pointer',color:'#16a34a',fontWeight:700,display:'flex',alignItems:'center',gap:'4px'}}>
+                    <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5l3 3L11 1" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Listo
+                  </button>
+                  <button onClick={()=>onToggleToday(task.id)}
+                    style={{background:`${BRAND}12`,border:'none',borderRadius:'5px',color:BRAND,cursor:'pointer',fontSize:'9px',fontWeight:700,padding:'3px 7px'}}>HOY</button>
                 </div>
               </div>
             )
@@ -208,12 +302,11 @@ function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onMove
 }
 
 // ── Mobile Project Card ───────────────────────────────────────
-function MobileProjectCard({ proj, tasks, t, lang, accent, isFirst, isLast, onToggle, onDelete, onMoveUp, onMoveDown, editProj, editVal, setEditVal, onEditStart, onEditSave, onEditCancel, adding, setAdding, newText, setNewText, onAddTask, onMoveTask, onDelTask, onTodayTask, onEditTask }) {
+function MobileProjectCard({ proj, tasks, t, lang, accent, isFirst, isLast, onToggle, onDelete, onMoveUp, onMoveDown, editProj, editVal, setEditVal, onEditStart, onEditSave, onEditCancel, adding, setAdding, newText, setNewText, onAddTask, onCompleteTask, onDelTask, onTodayTask, onEditTask }) {
   const [activeCol, setActiveCol] = useState('todo')
   const pTasks=tasks.filter(tk=>tk.project_id===proj.id)
   const todayN=pTasks.filter(t=>t.today&&t.status!=='done').length
   const doneN=pTasks.filter(t=>t.status==='done').length
-  const doingN=pTasks.filter(t=>t.status==='doing').length
   const todoN=pTasks.filter(t=>t.status==='todo').length
   const pct=pTasks.length?Math.round(doneN/pTasks.length*100):0
   return (
@@ -241,7 +334,6 @@ function MobileProjectCard({ proj, tasks, t, lang, accent, isFirst, isLast, onTo
         </div>
         <div style={{display:'flex',gap:'6px',marginTop:'6px',flexWrap:'wrap'}}>
           {todoN>0&&<Badge label={`${todoN} por hacer`} bg="#f5f5f5" color="#777"/>}
-          {doingN>0&&<Badge label={`${doingN} en curso`} bg="#fff7ed" color="#ea580c"/>}
           {doneN>0&&<Badge label={`${doneN} listo`} bg="#f0fdf4" color="#16a34a"/>}
         </div>
       </div>
@@ -257,7 +349,7 @@ function MobileProjectCard({ proj, tasks, t, lang, accent, isFirst, isLast, onTo
           <div style={{padding:'10px 14px 12px'}}>
             {pTasks.filter(tk=>tk.status===activeCol).map(task=>(
               <TaskCard key={task.id} task={task} accent={accent} alwaysShow={true}
-                onMove={s=>onMoveTask(task.id,s)} onDelete={()=>onDelTask(task.id)}
+                onComplete={()=>onCompleteTask(task.id)} onDelete={()=>onDelTask(task.id)}
                 onToday={()=>onTodayTask(task.id,task.today)} onEdit={text=>onEditTask(task.id,text)}/>
             ))}
             {pTasks.filter(tk=>tk.status===activeCol).length===0&&<div style={{color:'#ddd',fontSize:'12px',padding:'8px 0'}}>Sin tareas</div>}
@@ -286,6 +378,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
   const [tasks,setTasks]=useState([])
   const [loading,setLoading]=useState(true)
   const [showToday,setShowToday]=useState(false)
+  const [showInbox,setShowInbox]=useState(false)
   const [addingGroup,setAddingGroup]=useState(false)
   const [groupName,setGroupName]=useState('')
   const [addingProj,setAddingProj]=useState(null)
@@ -316,117 +409,58 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
   },[token])
   useEffect(()=>{load()},[load])
 
-  // ── Group ops ──
-  const addGroup = async()=>{
-    if(!groupName.trim()) return
-    try { const res=await db.insert('groups',{user_id:userId,name:groupName.trim(),position:groups.length,open:true},token); const g=Array.isArray(res)?res[0]:res; if(g) setGroups(gs=>[...gs,g]) } catch(e){console.error(e)}
-    setGroupName(''); setAddingGroup(false)
-  }
-  const toggleGroup = async(gid)=>{ const g=groups.find(g=>g.id===gid); setGroups(gs=>gs.map(g=>g.id===gid?{...g,open:!g.open}:g)); await db.update('groups',`id=eq.${gid}`,{open:!g.open},token).catch(console.error) }
-  const deleteGroup = async()=>{
-    const gid=confirmDel.id
-    await db.delete('groups',`id=eq.${gid}`,token).catch(console.error)
-    setGroups(gs=>gs.filter(g=>g.id!==gid))
-    const pids=projects.filter(p=>p.group_id===gid).map(p=>p.id)
-    setProjects(ps=>ps.filter(p=>p.group_id!==gid))
-    setTasks(ts=>ts.filter(t=>!pids.includes(t.project_id)))
-    setConfirmDel(null)
-  }
-  const saveEditGroup = async(gid)=>{ if(!editVal.trim()){setEditingGroup(null);return}; setGroups(gs=>gs.map(g=>g.id===gid?{...g,name:editVal.trim()}:g)); await db.update('groups',`id=eq.${gid}`,{name:editVal.trim()},token).catch(console.error); setEditingGroup(null) }
+  // Group ops
+  const addGroup=async()=>{ if(!groupName.trim()) return; try{const res=await db.insert('groups',{user_id:userId,name:groupName.trim(),position:groups.length,open:true},token);const g=Array.isArray(res)?res[0]:res;if(g)setGroups(gs=>[...gs,g])}catch(e){console.error(e)}; setGroupName('');setAddingGroup(false) }
+  const toggleGroup=async(gid)=>{ const g=groups.find(g=>g.id===gid);setGroups(gs=>gs.map(g=>g.id===gid?{...g,open:!g.open}:g));await db.update('groups',`id=eq.${gid}`,{open:!g.open},token).catch(console.error) }
+  const deleteGroup=async()=>{ const gid=confirmDel.id;await db.delete('groups',`id=eq.${gid}`,token).catch(console.error);setGroups(gs=>gs.filter(g=>g.id!==gid));const pids=projects.filter(p=>p.group_id===gid).map(p=>p.id);setProjects(ps=>ps.filter(p=>p.group_id!==gid));setTasks(ts=>ts.filter(t=>!pids.includes(t.project_id)));setConfirmDel(null) }
+  const saveEditGroup=async(gid)=>{ if(!editVal.trim()){setEditingGroup(null);return};setGroups(gs=>gs.map(g=>g.id===gid?{...g,name:editVal.trim()}:g));await db.update('groups',`id=eq.${gid}`,{name:editVal.trim()},token).catch(console.error);setEditingGroup(null) }
 
-  // ── Project ops ──
-  const addProject = async(gid)=>{
-    if(!projName.trim()) return
-    const ps=projects.filter(p=>p.group_id===gid)
-    try { const res=await db.insert('projects',{user_id:userId,group_id:gid,name:projName.trim(),color_idx:ps.length%ACCENTS.length,position:ps.length,open:true},token); const p=Array.isArray(res)?res[0]:res; if(p) setProjects(ps=>[...ps,p]) } catch(e){console.error(e)}
-    setProjName(''); setAddingProj(null)
-  }
-  const toggleProject = async(pid)=>{ const p=projects.find(p=>p.id===pid); setProjects(ps=>ps.map(p=>p.id===pid?{...p,open:!p.open}:p)); await db.update('projects',`id=eq.${pid}`,{open:!p.open},token).catch(console.error) }
-  const deleteProject = async()=>{
-    const pid=confirmDel.id
-    await db.delete('projects',`id=eq.${pid}`,token).catch(console.error)
-    setProjects(ps=>ps.filter(p=>p.id!==pid)); setTasks(ts=>ts.filter(t=>t.project_id!==pid)); setConfirmDel(null)
-  }
-  const saveEditProj = async(pid)=>{ if(!editVal.trim()){setEditingProj(null);return}; setProjects(ps=>ps.map(p=>p.id===pid?{...p,name:editVal.trim()}:p)); await db.update('projects',`id=eq.${pid}`,{name:editVal.trim()},token).catch(console.error); setEditingProj(null) }
-  const moveProjUp = async(pid)=>{
-    const gid=projects.find(p=>p.id===pid)?.group_id
-    const gps=projects.filter(p=>p.group_id===gid); const idx=gps.findIndex(p=>p.id===pid); if(idx<=0) return
-    const np=[...gps]; [np[idx-1],np[idx]]=[np[idx],np[idx-1]]
-    setProjects(ps=>ps.map(p=>{ const f=np.find(n=>n.id===p.id); return f?{...p,position:np.indexOf(f)}:p }))
-    await Promise.all([db.update('projects',`id=eq.${np[idx-1].id}`,{position:idx-1},token),db.update('projects',`id=eq.${np[idx].id}`,{position:idx},token)]).catch(console.error)
-  }
-  const moveProjDown = async(pid)=>{
-    const gid=projects.find(p=>p.id===pid)?.group_id
-    const gps=projects.filter(p=>p.group_id===gid); const idx=gps.findIndex(p=>p.id===pid); if(idx>=gps.length-1) return
-    const np=[...gps]; [np[idx],np[idx+1]]=[np[idx+1],np[idx]]
-    setProjects(ps=>ps.map(p=>{ const f=np.find(n=>n.id===p.id); return f?{...p,position:np.indexOf(f)}:p }))
-    await Promise.all([db.update('projects',`id=eq.${np[idx].id}`,{position:idx},token),db.update('projects',`id=eq.${np[idx+1].id}`,{position:idx+1},token)]).catch(console.error)
-  }
+  // Project ops
+  const addProject=async(gid)=>{ if(!projName.trim()) return;const ps=projects.filter(p=>p.group_id===gid);try{const res=await db.insert('projects',{user_id:userId,group_id:gid,name:projName.trim(),color_idx:ps.length%ACCENTS.length,position:ps.length,open:true},token);const p=Array.isArray(res)?res[0]:res;if(p)setProjects(ps=>[...ps,p])}catch(e){console.error(e)};setProjName('');setAddingProj(null) }
+  const toggleProject=async(pid)=>{ const p=projects.find(p=>p.id===pid);setProjects(ps=>ps.map(p=>p.id===pid?{...p,open:!p.open}:p));await db.update('projects',`id=eq.${pid}`,{open:!p.open},token).catch(console.error) }
+  const deleteProject=async()=>{ const pid=confirmDel.id;await db.delete('projects',`id=eq.${pid}`,token).catch(console.error);setProjects(ps=>ps.filter(p=>p.id!==pid));setTasks(ts=>ts.filter(t=>t.project_id!==pid));setConfirmDel(null) }
+  const saveEditProj=async(pid)=>{ if(!editVal.trim()){setEditingProj(null);return};setProjects(ps=>ps.map(p=>p.id===pid?{...p,name:editVal.trim()}:p));await db.update('projects',`id=eq.${pid}`,{name:editVal.trim()},token).catch(console.error);setEditingProj(null) }
+  const moveProjUp=async(pid)=>{ const gid=projects.find(p=>p.id===pid)?.group_id;const gps=projects.filter(p=>p.group_id===gid);const idx=gps.findIndex(p=>p.id===pid);if(idx<=0)return;const np=[...gps];[np[idx-1],np[idx]]=[np[idx],np[idx-1]];setProjects(ps=>ps.map(p=>{const f=np.find(n=>n.id===p.id);return f?{...p,position:np.indexOf(f)}:p}));await Promise.all([db.update('projects',`id=eq.${np[idx-1].id}`,{position:idx-1},token),db.update('projects',`id=eq.${np[idx].id}`,{position:idx},token)]).catch(console.error) }
+  const moveProjDown=async(pid)=>{ const gid=projects.find(p=>p.id===pid)?.group_id;const gps=projects.filter(p=>p.group_id===gid);const idx=gps.findIndex(p=>p.id===pid);if(idx>=gps.length-1)return;const np=[...gps];[np[idx],np[idx+1]]=[np[idx+1],np[idx]];setProjects(ps=>ps.map(p=>{const f=np.find(n=>n.id===p.id);return f?{...p,position:np.indexOf(f)}:p}));await Promise.all([db.update('projects',`id=eq.${np[idx].id}`,{position:idx},token),db.update('projects',`id=eq.${np[idx+1].id}`,{position:idx+1},token)]).catch(console.error) }
 
-  // ── Task ops ──
-  const addTask = async(pid,col)=>{
-    if(!newText.trim()) return
-    try { const res=await db.insert('tasks',{user_id:userId,project_id:pid,text:newText.trim(),status:col,today:false,position:tasks.filter(t=>t.project_id===pid&&t.status===col).length},token); const tk=Array.isArray(res)?res[0]:res; if(tk) setTasks(ts=>[...ts,tk]) } catch(e){console.error(e)}
-    setNewText(''); setAddingTask({})
-  }
-  const moveTask = async(tid,s)=>{
-    const upd=s==='done'?{status:s,today:false}:{status:s}
-    setTasks(ts=>ts.map(t=>t.id===tid?{...t,...upd}:t)); await db.update('tasks',`id=eq.${tid}`,upd,token).catch(console.error)
-  }
-  const delTask = async(tid)=>{ setTasks(ts=>ts.filter(t=>t.id!==tid)); await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error) }
-  const todayTask = async(tid,cur)=>{
-    const nv=!cur
-    setTasks(ts=>{ const tk=ts.find(t=>t.id===tid); if(!tk) return ts
-      if(nv){ const rest=ts.filter(t=>t.id!==tid); const before=rest.filter(t=>!(t.project_id===tk.project_id&&t.status===tk.status)); const same=rest.filter(t=>t.project_id===tk.project_id&&t.status===tk.status); return [...before,{...tk,today:nv},...same] }
-      return ts.map(t=>t.id===tid?{...t,today:nv}:t) })
-    await db.update('tasks',`id=eq.${tid}`,{today:nv},token).catch(console.error)
-  }
-  const editTask = async(tid,text)=>{ setTasks(ts=>ts.map(t=>t.id===tid?{...t,text}:t)); await db.update('tasks',`id=eq.${tid}`,{text},token).catch(console.error) }
+  // Task ops
+  const addTask=async(pid,col)=>{ if(!newText.trim())return;try{const res=await db.insert('tasks',{user_id:userId,project_id:pid,text:newText.trim(),status:col,today:false,position:tasks.filter(t=>t.project_id===pid&&t.status===col).length},token);const tk=Array.isArray(res)?res[0]:res;if(tk)setTasks(ts=>[...ts,tk])}catch(e){console.error(e)};setNewText('');setAddingTask({}) }
+  const completeTask=async(tid)=>{ const task=tasks.find(t=>t.id===tid);const newStatus=task?.status==='done'?'todo':'done';const upd={status:newStatus};if(newStatus==='done')upd.today=false;setTasks(ts=>ts.map(t=>t.id===tid?{...t,...upd}:t));await db.update('tasks',`id=eq.${tid}`,upd,token).catch(console.error) }
+  const delTask=async(tid)=>{ setTasks(ts=>ts.filter(t=>t.id!==tid));await db.delete('tasks',`id=eq.${tid}`,token).catch(console.error) }
+  const todayTask=async(tid,cur)=>{ const nv=!cur;setTasks(ts=>{const tk=ts.find(t=>t.id===tid);if(!tk)return ts;if(nv){const rest=ts.filter(t=>t.id!==tid);const before=rest.filter(t=>!(t.project_id===tk.project_id&&t.status===tk.status));const same=rest.filter(t=>t.project_id===tk.project_id&&t.status===tk.status);return[...before,{...tk,today:nv},...same]}return ts.map(t=>t.id===tid?{...t,today:nv}:t)});await db.update('tasks',`id=eq.${tid}`,{today:nv},token).catch(console.error) }
+  const editTask=async(tid,text)=>{ setTasks(ts=>ts.map(t=>t.id===tid?{...t,text}:t));await db.update('tasks',`id=eq.${tid}`,{text},token).catch(console.error) }
 
-  // Today panel helpers
-  const findTask = tid => tasks.find(t=>t.id===tid)
-  const toggleTodayById = tid=>{ const t=findTask(tid); if(t) todayTask(tid,t.today) }
-  const moveTodayById   = (tid,s)=>moveTask(tid,s)
+  const toggleTodayById=tid=>{ const t=tasks.find(t=>t.id===tid);if(t)todayTask(tid,t.today) }
+  const completeTodayById=tid=>completeTask(tid)
 
-  // ── Drag & Drop ──
+  // Drag & Drop
   const handleDragStart=(tid,pid,status)=>{ dragRef.current={tid,pid,status} }
-  const handleDragOverTask=(targetId,tPid,tStatus)=>{ if(!dragRef.current||dragRef.current.tid===targetId) return; setDragOver(targetId) }
-  const handleDragOverCol=(col,pid)=>{ if(!dragRef.current) return; setDragOver(`col:${pid}:${col}`) }
-  const handleDropOnTask=(targetId,tPid,tStatus)=>{
-    setDragOver(null); if(!dragRef.current) return
-    const {tid,pid,status}=dragRef.current; dragRef.current=null
-    if(pid===tPid){
-      if(status===tStatus){
-        setTasks(ts=>{ const arr=[...ts]; const fi=arr.findIndex(t=>t.id===tid); const ti=arr.findIndex(t=>t.id===targetId); if(fi===-1||ti===-1) return ts; const [m]=arr.splice(fi,1); arr.splice(ti,0,m); return arr })
-      } else { moveTask(tid,tStatus) }
-    }
-  }
-  const handleDropOnCol=(col,pid)=>{
-    setDragOver(null); if(!dragRef.current) return
-    const {tid}=dragRef.current; dragRef.current=null
-    moveTask(tid,col)
-  }
+  const handleDragOverTask=(targetId)=>{ if(!dragRef.current||dragRef.current.tid===targetId)return;setDragOver(targetId) }
+  const handleDragOverCol=(col,pid)=>{ if(!dragRef.current)return;setDragOver(`col:${pid}:${col}`) }
+  const handleDropOnTask=(targetId,tPid,tStatus)=>{ setDragOver(null);if(!dragRef.current)return;const{tid,pid,status}=dragRef.current;dragRef.current=null;if(pid===tPid){if(status===tStatus){setTasks(ts=>{const arr=[...ts];const fi=arr.findIndex(t=>t.id===tid);const ti=arr.findIndex(t=>t.id===targetId);if(fi===-1||ti===-1)return ts;const[m]=arr.splice(fi,1);arr.splice(ti,0,m);return arr})}else{completeTask(tid)}} }
+  const handleDropOnCol=(col,pid)=>{ setDragOver(null);if(!dragRef.current)return;const{tid}=dragRef.current;dragRef.current=null;const task=tasks.find(t=>t.id===tid);if(task&&task.status!==col)completeTask(tid) }
+  const handleLogout=async()=>{ await supaFetch('/auth/v1/logout',{method:'POST'},token).catch(()=>{});onLogout() }
 
-  const handleLogout=async()=>{ await supaFetch('/auth/v1/logout',{method:'POST'},token).catch(()=>{}); onLogout() }
-
-  const allTasks=tasks, gToday=allTasks.filter(t=>t.today&&t.status!=='done').length
-  const gTodo=allTasks.filter(t=>t.status==='todo').length, gDoing=allTasks.filter(t=>t.status==='doing').length, gDone=allTasks.filter(t=>t.status==='done').length
+  const assignedTasks=tasks.filter(t=>t.project_id)
+  const inboxTasks=tasks.filter(t=>!t.project_id)
+  const gToday=assignedTasks.filter(t=>t.today&&t.status!=='done').length
+  const gTodo=assignedTasks.filter(t=>t.status==='todo').length
+  const gDone=assignedTasks.filter(t=>t.status==='done').length
+  const inboxCount=inboxTasks.filter(t=>t.status!=='done').length
 
   if(loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif",color:'#aaa',fontSize:'13px'}}>{t.loading}</div>
 
   return (
     <div style={{minHeight:'100vh',background:mobile?'#f5f5f5':'#fff',fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif",color:'#111',fontSize:'13px'}}>
 
-      {showToday&&<TodayPanel groups={groups} projects={projects} tasks={tasks} t={t} onClose={()=>setShowToday(false)} onToggleToday={toggleTodayById} onMoveTask={moveTodayById}/>}
+      {showToday&&<TodayPanel groups={groups} projects={projects} tasks={tasks} t={t} onClose={()=>setShowToday(false)} onToggleToday={toggleTodayById} onCompleteTask={completeTodayById}/>}
+      {showInbox&&<InboxPanel tasks={tasks} projects={projects} groups={groups} t={t} token={token} userId={userId} onClose={()=>setShowInbox(false)} onRefresh={load}/>}
 
-      {/* Confirm delete */}
       {confirmDel&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.25)',zIndex:998,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
           <div style={{background:'#fff',borderRadius:'14px',padding:'24px',boxShadow:'0 8px 32px rgba(0,0,0,0.15)',maxWidth:'320px',width:'100%'}}>
             <div style={{fontWeight:700,marginBottom:'8px',fontSize:'15px'}}>{confirmDel.type==='group'?t.deleteGroup:t.deleteProject}</div>
-            <div style={{color:'#888',fontSize:'13px',marginBottom:'20px',lineHeight:'1.5'}}>
-              {confirmDel.type==='group'?t.deleteGroupMsg:<>{t.deleteMsg1} <strong>"{confirmDel.name}"</strong> {t.deleteMsg2}</>}
-            </div>
+            <div style={{color:'#888',fontSize:'13px',marginBottom:'20px',lineHeight:'1.5'}}>{confirmDel.type==='group'?t.deleteGroupMsg:<>{t.deleteMsg1} <strong>"{confirmDel.name}"</strong> {t.deleteMsg2}</>}</div>
             <div style={{display:'flex',gap:'8px'}}>
               <button onClick={()=>setConfirmDel(null)} style={{flex:1,background:'#f5f5f5',border:'none',borderRadius:'8px',padding:'11px',fontSize:'13px',cursor:'pointer',color:'#555',fontWeight:600}}>{t.cancelDelete}</button>
               <button onClick={confirmDel.type==='group'?deleteGroup:deleteProject} style={{flex:1,background:'#dc2626',border:'none',borderRadius:'8px',padding:'11px',fontSize:'13px',cursor:'pointer',color:'#fff',fontWeight:700}}>{t.confirmDelete}</button>
@@ -440,16 +474,22 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
         <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
           <Logo size={mobile?22:26}/><span style={{fontWeight:800,fontSize:mobile?'13px':'15px',letterSpacing:'-0.5px',color:BRAND}}>Kanvuu</span>
         </div>
-        <div style={{display:'flex',gap:mobile?'10px':'16px',overflowX:'auto',flex:1,scrollbarWidth:'none'}}>
+        <div style={{display:'flex',gap:mobile?'8px':'14px',overflowX:'auto',flex:1,scrollbarWidth:'none',alignItems:'baseline'}}>
           <button onClick={()=>setShowToday(true)} style={{display:'flex',alignItems:'baseline',gap:'3px',background:'none',border:'none',cursor:'pointer',padding:0,flexShrink:0}}>
             <span style={{fontWeight:700,fontSize:'14px',color:BRAND}}>{gToday}</span>
             <span style={{color:BRAND,fontSize:'10px',textDecoration:'underline',textDecorationColor:`${BRAND}66`,whiteSpace:'nowrap'}}>{t.hoy}</span>
           </button>
-          {[{l:t.todo,v:gTodo},{l:t.doing,v:gDoing},{l:t.done,v:gDone}].map(x=>(
+          {[{l:t.todo,v:gTodo},{l:t.done,v:gDone}].map(x=>(
             <div key={x.l} style={{display:'flex',alignItems:'baseline',gap:'3px',flexShrink:0}}>
               <span style={{fontWeight:500,fontSize:'13px'}}>{x.v}</span><span style={{color:'#aaa',fontSize:'10px',whiteSpace:'nowrap'}}>{x.l}</span>
             </div>
           ))}
+          {inboxCount>0&&(
+            <button onClick={()=>setShowInbox(true)} style={{display:'flex',alignItems:'baseline',gap:'3px',background:'none',border:'none',cursor:'pointer',padding:0,flexShrink:0}}>
+              <span style={{fontWeight:600,fontSize:'13px',color:'#ea580c'}}>{inboxCount}</span>
+              <span style={{color:'#ea580c',fontSize:'10px',textDecoration:'underline',textDecorationColor:'#ea580c66',whiteSpace:'nowrap'}}>{t.inbox}</span>
+            </button>
+          )}
         </div>
         <div style={{display:'flex',gap:'6px',flexShrink:0}}>
           <button onClick={()=>setLang(l=>l==='es'?'en':'es')} style={{background:'#f5f5f5',border:'none',borderRadius:'6px',padding:'5px 9px',fontSize:'11px',cursor:'pointer',fontWeight:600,color:'#555'}}>{lang==='es'?'EN':'ES'}</button>
@@ -483,10 +523,8 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
         const gProjects=projects.filter(p=>p.group_id===group.id)
         const gTasks=tasks.filter(t=>gProjects.some(p=>p.id===t.project_id))
         const gTodayN=gTasks.filter(t=>t.today&&t.status!=='done').length
-
         return (
           <div key={group.id}>
-            {/* Group header */}
             <div style={{display:'flex',alignItems:'center',padding:mobile?'10px 16px 8px':'10px 24px 8px',background:'#f8f8f8',borderBottom:'1px solid #ebebeb',borderTop:'2px solid #e8e8e8',gap:'8px'}}>
               <button onClick={()=>toggleGroup(group.id)} style={{background:'none',border:'none',cursor:'pointer',padding:0,display:'flex',alignItems:'center',gap:'8px',flex:1,userSelect:'none'}}>
                 <span style={{fontSize:'9px',color:'#aaa'}}>{group.open?'▼':'▶'}</span>
@@ -513,15 +551,12 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
 
             {group.open&&(
               <div style={{padding:mobile?'12px 16px 4px':'0'}}>
-                {mobile&&(
-                  <button onClick={()=>{setAddingProj(group.id);setProjName('')}} style={{width:'100%',background:'none',border:'1px dashed #ddd',borderRadius:'8px',color:'#aaa',cursor:'pointer',fontSize:'12px',padding:'8px',marginBottom:'8px',textAlign:'left'}}>{t.newProject}</button>
-                )}
+                {mobile&&<button onClick={()=>{setAddingProj(group.id);setProjName('')}} style={{width:'100%',background:'none',border:'1px dashed #ddd',borderRadius:'8px',color:'#aaa',cursor:'pointer',fontSize:'12px',padding:'8px',marginBottom:'8px',textAlign:'left'}}>{t.newProject}</button>}
                 {gProjects.map((proj,pi)=>{
                   const accent=ACCENTS[proj.color_idx%ACCENTS.length]
                   const pTasks=tasks.filter(t=>t.project_id===proj.id)
                   const todayN=pTasks.filter(t=>t.today&&t.status!=='done').length
                   const doneN=pTasks.filter(t=>t.status==='done').length
-                  const doingN=pTasks.filter(t=>t.status==='doing').length
                   const todoN=pTasks.filter(t=>t.status==='todo').length
                   const pct=pTasks.length?Math.round(doneN/pTasks.length*100):0
                   const isFirst=pi===0, isLast=pi===gProjects.length-1
@@ -537,7 +572,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
                       onEditSave={saveEditProj} onEditCancel={()=>setEditingProj(null)}
                       adding={addingTask} setAdding={setAddingTask}
                       newText={newText} setNewText={setNewText}
-                      onAddTask={addTask} onMoveTask={moveTask} onDelTask={delTask}
+                      onAddTask={addTask} onCompleteTask={completeTask} onDelTask={delTask}
                       onTodayTask={(tid,cur)=>todayTask(tid,cur)} onEditTask={editTask}
                     />
                   )
@@ -562,7 +597,6 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
                             <div style={{display:'flex',gap:'5px',marginLeft:'4px'}}>
                               {todayN>0&&<Badge label={`${todayN} ${t.hoy.toLowerCase()}`} bg={`${BRAND}12`} color={BRAND}/>}
                               {todoN>0&&<Badge label={`${todoN} ${t.todo.toLowerCase()}`} bg="#f5f5f5" color="#777"/>}
-                              {doingN>0&&<Badge label={`${doingN} ${t.doing.toLowerCase()}`} bg="#fff7ed" color="#ea580c"/>}
                               {doneN>0&&<Badge label={`${doneN} ${t.done.toLowerCase()}`} bg="#f0fdf4" color="#16a34a"/>}
                             </div>
                           )}
@@ -574,7 +608,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
                         </div>
                       </div>
                       {proj.open&&(
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',borderTop:'1px solid #f4f4f4',marginLeft:27}}>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',borderTop:'1px solid #f4f4f4',marginLeft:27}}>
                           {COLS.map((col,ci)=>{
                             const colTasks=pTasks.filter(t=>t.status===col.key)
                             const isAdd=addingTask.pid===proj.id&&addingTask.col===col.key
@@ -584,21 +618,15 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
                               <div key={col.key}
                                 onDragOver={e=>{e.preventDefault();handleDragOverCol(col.key,proj.id)}}
                                 onDrop={e=>{e.preventDefault();handleDropOnCol(col.key,proj.id)}}
-                                style={{borderRight:ci<2?'1px solid #f4f4f4':'none',padding:'8px 12px 10px',background:isColOver?`${col.color}08`:'transparent',transition:'background 0.15s'}}>
+                                style={{borderRight:ci<1?'1px solid #f4f4f4':'none',padding:'8px 12px 10px',background:isColOver?`${col.color}08`:'transparent',transition:'background 0.15s'}}>
                                 <div style={{display:'flex',gap:'5px',alignItems:'center',marginBottom:'6px'}}>
                                   <span style={{fontSize:'10px',fontWeight:600,textTransform:'uppercase',letterSpacing:'1.5px',color:col.color}}>{lang==='es'?col.es:col.en}</span>
                                   <span style={{fontSize:'11px',color:'#ccc'}}>{colTasks.length}</span>
                                 </div>
                                 {colTasks.map(task=>(
                                   <TaskCard key={task.id} task={task} accent={accent} alwaysShow={false}
-                                    dragHandlers={{
-                                      draggable:true,
-                                      onDragStart:()=>handleDragStart(task.id,proj.id,task.status),
-                                      onDragOver:e=>{e.preventDefault();handleDragOverTask(task.id,proj.id,task.status)},
-                                      onDrop:e=>{e.preventDefault();handleDropOnTask(task.id,proj.id,task.status)},
-                                      style:{opacity:dragRef.current?.tid===task.id?0.35:1,borderTop:dragOver===task.id?`2px solid ${accent}`:'2px solid transparent',transition:'border 0.1s'}
-                                    }}
-                                    onMove={s=>moveTask(task.id,s)} onDelete={()=>delTask(task.id)}
+                                    dragHandlers={{draggable:true,onDragStart:()=>handleDragStart(task.id,proj.id,task.status),onDragOver:e=>{e.preventDefault();handleDragOverTask(task.id)},onDrop:e=>{e.preventDefault();handleDropOnTask(task.id,proj.id,task.status)},style:{opacity:dragRef.current?.tid===task.id?0.35:1,borderTop:dragOver===task.id?`2px solid ${accent}`:'2px solid transparent',transition:'border 0.1s'}}}
+                                    onComplete={()=>completeTask(task.id)} onDelete={()=>delTask(task.id)}
                                     onToday={()=>todayTask(task.id,task.today)} onEdit={text=>editTask(task.id,text)}
                                   />
                                 ))}
@@ -625,7 +653,6 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
           </div>
         )
       })}
-
       {groups.length===0&&!loading&&<div style={{textAlign:'center',color:'#ccc',marginTop:'80px',fontSize:'14px',padding:'24px'}}>{t.noGroups}</div>}
     </div>
   )
