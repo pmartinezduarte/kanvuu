@@ -230,16 +230,32 @@ function InboxPanel({ tasks, projects, groups, t, token, userId, onClose, onRefr
 }
 
 // ── Today Panel ───────────────────────────────────────────────
-function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onCompleteTask }) {
+function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onCompleteTask, token }) {
   const todayTasks = tasks.filter(t=>t.today&&t.status!=='done')
-  const [order, setOrder] = useState(todayTasks.map(t=>t.id))
   const dragId = useRef(null)
   const [dragOver, setDragOver] = useState(null)
 
+  // Sort by today_order, nulls last
   const sorted = [...todayTasks].sort((a,b)=>{
-    const ia=order.indexOf(a.id), ib=order.indexOf(b.id)
+    if(a.today_order==null&&b.today_order==null) return 0
+    if(a.today_order==null) return 1
+    if(b.today_order==null) return -1
+    return a.today_order - b.today_order
+  })
+
+  const [localOrder, setLocalOrder] = useState(sorted.map(t=>t.id))
+
+  const displayOrder = [...todayTasks].sort((a,b)=>{
+    const ia=localOrder.indexOf(a.id), ib=localOrder.indexOf(b.id)
     if(ia===-1&&ib===-1) return 0; if(ia===-1) return 1; if(ib===-1) return -1; return ia-ib
   })
+
+  const saveOrder = async(newOrder) => {
+    // Save today_order to Supabase for each task
+    await Promise.all(newOrder.map((id,i)=>
+      db.update('tasks',`id=eq.${id}`,{today_order:i+1},token).catch(console.error)
+    ))
+  }
 
   const getProj  = pid => projects.find(p=>p.id===pid)
   const getGroup = gid => groups.find(g=>g.id===gid)
@@ -253,7 +269,7 @@ function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onComp
         </div>
         <div style={{maxHeight:'65vh',overflowY:'auto',padding:'12px 16px'}}>
           {sorted.length===0&&<div style={{color:'#ccc',fontSize:'13px',padding:'20px 0',textAlign:'center'}}>{t.noToday}</div>}
-          {sorted.map((task,i)=>{
+          {displayOrder.map((task,i)=>{
             const proj  = getProj(task.project_id)
             const group = proj ? getGroup(proj.group_id) : null
             const acc   = proj ? ACCENTS[proj.color_idx%ACCENTS.length] : BRAND
@@ -263,11 +279,11 @@ function TodayPanel({ groups, projects, tasks, t, onClose, onToggleToday, onComp
                 onDragStart={()=>{ dragId.current=task.id }}
                 onDragOver={e=>{ e.preventDefault(); if(dragId.current&&dragId.current!==task.id) setDragOver(task.id) }}
                 onDrop={e=>{ e.preventDefault(); if(!dragId.current||dragId.current===task.id){setDragOver(null);return}
-                  const full=[...new Set([...order,...sorted.map(t=>t.id)])]
-                  const fi=full.indexOf(dragId.current), ti=full.indexOf(task.id)
+                  const ids=displayOrder.map(t=>t.id)
+                  const fi=ids.indexOf(dragId.current), ti=ids.indexOf(task.id)
                   if(fi===-1||ti===-1){setDragOver(null);return}
-                  const next=[...full]; next.splice(fi,1); next.splice(ti,0,dragId.current)
-                  setOrder(next); dragId.current=null; setDragOver(null)
+                  const next=[...ids]; next.splice(fi,1); next.splice(ti,0,dragId.current)
+                  setLocalOrder(next); saveOrder(next); dragId.current=null; setDragOver(null)
                 }}
                 style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 12px',borderRadius:'10px',
                   background:'#fafafa',marginBottom:'6px',cursor:'grab',
@@ -453,7 +469,7 @@ function KanvuuMain({ session, t, lang, setLang, onLogout }) {
   return (
     <div style={{minHeight:'100vh',background:mobile?'#f5f5f5':'#fff',fontFamily:"'SF Pro Text','Helvetica Neue',sans-serif",color:'#111',fontSize:'13px'}}>
 
-      {showToday&&<TodayPanel groups={groups} projects={projects} tasks={tasks} t={t} onClose={()=>setShowToday(false)} onToggleToday={toggleTodayById} onCompleteTask={completeTodayById}/>}
+      {showToday&&<TodayPanel groups={groups} projects={projects} tasks={tasks} t={t} onClose={()=>setShowToday(false)} onToggleToday={toggleTodayById} onCompleteTask={completeTodayById} token={token}/>}
       {showInbox&&<InboxPanel tasks={tasks} projects={projects} groups={groups} t={t} token={token} userId={userId} onClose={()=>setShowInbox(false)} onRefresh={load}/>}
 
       {confirmDel&&(
